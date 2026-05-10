@@ -1,0 +1,82 @@
+{
+  "name": "playwright-mcp-e2e-test-automation",
+  "version": "1.0.0",
+  "description": "Professional End-to-End test automation framework built with Playwright and TypeScript, designed to work seamlessly with Playwright MCP (Model Context Protocol) for AI-assisted test execution.",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test --project=chromium",
+    "test:headed": "playwright test --project=chromium --headed",
+    "test:all:headed": "playwright test --headed",
+    "test:smoke:headed": "playwright test --project=chromium --headed --grep @smoke",
+    "test:firefox:headed": "playwright test --project=firefox --headed",
+    "test:webkit:headed": "playwright test --project=webkit --headed",
+    "test:mobile:headed": "playwright test --headed --project='Mobile Chrome' --project='Mobile Safari'",
+    "test:debug": "playwright test --project=chromium --debug",
+    "test:ui": "playwright test --project=chromium --ui",
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit",
+    "test:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
+    "test:all": "playwright test",
+    "test:smoke": "playwright test --project=chromium --grep @smoke",
+    "test:regression": "playwright test --project=chromium --grep @regression",
+    "test:cart": "playwright test --project=chromium tests/e2e/add-products-to-cart.spec.ts tests/e2e/remove-products-from-cart.spec.ts tests/e2e/verify-product-quantity-in-cart.spec.ts",
+    "test:cart:headed": "playwright test --project=chromium --headed tests/e2e/add-products-to-cart.spec.ts tests/e2e/remove-products-from-cart.spec.ts tests/e2e/verify-product-quantity-in-cart.spec.ts",
+    "test:search": "playwright test --project=chromium tests/e2e/search-product.spec.ts",
+    "test:search:headed": "playwright test --project=chromium --headed tests/e2e/search-product.spec.ts",
+    "test:category": "playwright test --project=chromium tests/e2e/view-category-products.spec.ts",
+    "test:category:headed": "playwright test --project=chromium --headed tests/e2e/view-category-products.spec.ts",
+    "test:parallel": "playwright test --project=chromium --workers=4",
+    "test:serial": "playwright test --project=chromium --workers=1",
+    "report": "playwright show-report",
+    "report:open": "playwright show-report playwright-report",
+    "codegen": "playwright codegen http://automationexercise.com",
+    "install:browsers": "playwright install --with-deps",
+    "install:chromium": "playwright install chromium --with-deps",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf playwright-report test-results allure-results allure-report",
+    "prepare": "playwright install chromium"
+  },
+  "keywords": [
+    "playwright",
+    "playwright-mcp",
+    "e2e-testing",
+    "test-automation",
+    "typescript",
+    "page-object-model",
+    "automationexercise",
+    "ci-cd",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "author": "QA Engineering Team",
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.7.5",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "dotenv": "^16.4.5",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-playwright": "^2.0.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "homepage": "https://github.com/sakibul-islam-sqa/playwright-mcp-e2e-test-automation",
+  "bugs": {
+    "url": "https://github.com/sakibul-islam-sqa/playwright-mcp-e2e-test-automation/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sakibul-islam-sqa/playwright-mcp-e2e-test-automation.git"
+  }
+}
