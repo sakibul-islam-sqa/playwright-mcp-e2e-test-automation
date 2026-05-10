@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.env
+.env.*
+*.min.js
+*.min.css
