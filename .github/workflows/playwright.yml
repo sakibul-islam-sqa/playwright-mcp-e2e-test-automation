@@ -1,0 +1,229 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser / project(s) to run (push/PR always use Chromium only)'
+        required: false
+        default: chromium
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - mobile
+          - all
+      tag:
+        description: 'Tag filter (e.g. @smoke, @regression)'
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run E2E Tests (${{ matrix.project }})
+    if: github.event_name != 'workflow_dispatch'
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium]
+        shard: [1, 2]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps ${{ matrix.project }}
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps ${{ matrix.project }}
+
+      - name: Run Playwright tests
+        env:
+          CI: true
+          BASE_URL: http://automationexercise.com
+        run: |
+          npx playwright test \
+            --project=${{ matrix.project }} \
+            --shard=${{ matrix.shard }}/2
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report-${{ matrix.project }}-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results-${{ matrix.project }}-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 14
+
+      - name: Upload trace files on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: traces-${{ matrix.project }}-${{ matrix.shard }}
+          path: test-results/**/trace.zip
+          retention-days: 14
+
+  test-manual:
+    name: Manual E2E (${{ inputs.browser }})
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: 90
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          if [ "${{ inputs.browser }}" = "all" ]; then
+            npx playwright install --with-deps
+          elif [ "${{ inputs.browser }}" = "mobile" ]; then
+            npx playwright install --with-deps chromium webkit
+          else
+            npx playwright install --with-deps "${{ inputs.browser }}"
+          fi
+
+      - name: Run Playwright tests
+        env:
+          CI: true
+          BASE_URL: http://automationexercise.com
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.tag }}"
+          BROWSER="${{ inputs.browser }}"
+
+          run_pw() {
+            if [ -n "$TAG" ]; then
+              npx playwright test "$@" --grep "$TAG"
+            else
+              npx playwright test "$@"
+            fi
+          }
+
+          case "$BROWSER" in
+            all)
+              run_pw
+              ;;
+            mobile)
+              run_pw --project="Mobile Chrome" --project="Mobile Safari"
+              ;;
+            *)
+              run_pw --project="$BROWSER"
+              ;;
+          esac
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report-manual-${{ inputs.browser }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results-manual-${{ inputs.browser }}
+          path: test-results/
+          retention-days: 14
+
+      - name: Upload trace files on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: traces-manual-${{ inputs.browser }}
+          path: test-results/**/trace.zip
+          retention-days: 14
+
+  lint:
+    name: Lint and Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier check
+        run: npm run format:check
+
+      - name: Run TypeScript type check
+        run: npm run type-check
+
+  publish-report:
+    name: Publish Aggregated Report
+    needs: test
+    if: ${{ !cancelled() && github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports
+          pattern: playwright-report-*
+
+      - name: Upload combined HTML reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-playwright-reports
+          path: all-reports/
+          retention-days: 30
