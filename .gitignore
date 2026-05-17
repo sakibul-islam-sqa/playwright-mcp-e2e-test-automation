@@ -1,49 +1,102 @@
+# =============================================================================
+# Dependencies
+# =============================================================================
 node_modules/
+
+# Alternate package managers (this repo uses npm + package-lock.json)
 yarn.lock
 pnpm-lock.yaml
 
+# =============================================================================
+# Build & compile output
+# =============================================================================
 dist/
 build/
 out/
 *.tsbuildinfo
 
+# =============================================================================
+# Playwright & test artifacts
+# =============================================================================
 playwright-report/
 test-results/
+blob-report/
 playwright/.cache/
+playwright/.auth/
+
+# Optional local artifact folders (if redirected from default paths)
+screenshots/
+videos/
+traces/
+
+# Allure (optional reporter)
 allure-results/
 allure-report/
-blob-report/
 
+# =============================================================================
+# Environment & secrets
+# =============================================================================
 .env
-.env.local
-.env.*.local
-.env.production
+.env.*
+!.env.example
 
+# Local MCP config (copy from mcp.config.example.json)
+mcp.config.json
+
+# =============================================================================
+# Logs & diagnostics
+# =============================================================================
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
+# =============================================================================
+# Test coverage
+# =============================================================================
+coverage/
+*.lcov
+.nyc_output/
+
+# =============================================================================
+# Caches & temporary files
+# =============================================================================
+.cache/
+.tmp/
+.temp/
+.eslintcache
+.prettiercache
+
+# =============================================================================
+# OS-generated files
+# =============================================================================
 .DS_Store
+.AppleDouble
+.LSOverride
 Thumbs.db
 desktop.ini
+ehthumbs.db
 
+# =============================================================================
+# IDE & editors
+# =============================================================================
 .idea/
-.vscode/*
-!.vscode/settings.json.example
-!.vscode/extensions.json
 *.swp
 *.swo
 *~
 
-screenshots/
-videos/
-traces/
-.tmp/
-.cache/
+# VS Code: ignore user settings; keep shared team config
+.vscode/*
+!.vscode/settings.json.example
+!.vscode/extensions.json
 
-coverage/
-*.lcov
-.nyc_output/
+# Cursor (local AI/IDE state)
+.cursor/
+
+# =============================================================================
+# Optional local tooling
+# =============================================================================
+*.local
