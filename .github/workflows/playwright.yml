@@ -38,16 +38,13 @@ permissions:
 
 jobs:
   test:
-    name: Run E2E Tests (${{ matrix.project }} - shard ${{ matrix.shard }}/2)
-    if: github.event_name != 'workflow_dispatch'
-    timeout-minutes: 60
+    name: ${{ matrix.mode == 'manual' && format('Manual E2E ({0})', inputs.browser) || format('Run E2E Tests ({0} - shard {1}/2)', matrix.project, matrix.shard) }}
+    timeout-minutes: ${{ matrix.mode == 'manual' && 90 || 60 }}
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
-      matrix:
-        project: [chromium]
-        shard: [1, 2]
+      matrix: ${{ github.event_name == 'workflow_dispatch' && fromJSON('{"include":[{"mode":"manual"}]}') || fromJSON('{"include":[{"mode":"ci","project":"chromium","shard":1},{"mode":"ci","project":"chromium","shard":2}]}') }}
 
     steps:
       - name: Checkout repository
@@ -63,6 +60,7 @@ jobs:
         run: npm ci
 
       - name: Cache Playwright browsers
+        if: matrix.mode == 'ci'
         uses: actions/cache@v4
         id: playwright-cache
         with:
@@ -71,65 +69,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-playwright-
 
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+      - name: Install Playwright browsers (CI)
+        if: matrix.mode == 'ci' && steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps ${{ matrix.project }}
 
-      - name: Install Playwright system deps (cache hit)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
+      - name: Install Playwright system deps (CI cache hit)
+        if: matrix.mode == 'ci' && steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps ${{ matrix.project }}
 
-      - name: Run Playwright tests
-        env:
-          PLAYWRIGHT_BLOB_REPORT: '1'
-        run: |
-          npx playwright test \
-            --project=${{ matrix.project }} \
-            --shard=${{ matrix.shard }}/2
-
-      - name: Upload blob report
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
-          path: blob-report/
-          retention-days: 14
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: test-results-${{ matrix.project }}-${{ matrix.shard }}
-          path: test-results/
-          retention-days: 14
-
-      - name: Upload trace files on failure
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: traces-${{ matrix.project }}-${{ matrix.shard }}
-          path: test-results/**/trace.zip
-          retention-days: 14
-
-  test-manual:
-    name: Manual E2E (${{ inputs.browser }})
-    if: github.event_name == 'workflow_dispatch'
-    timeout-minutes: 90
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
+      - name: Install Playwright browsers (manual)
+        if: matrix.mode == 'manual'
         run: |
           if [ "${{ inputs.browser }}" = "all" ]; then
             npx playwright install --with-deps
@@ -139,7 +88,19 @@ jobs:
             npx playwright install --with-deps "${{ inputs.browser }}"
           fi
 
-      - name: Run Playwright tests
+      - name: Run Playwright tests (CI)
+        if: matrix.mode == 'ci'
+        env:
+          PLAYWRIGHT_BLOB_REPORT: '1'
+        run: |
+          npx playwright test \
+            --project=${{ matrix.project }} \
+            --shard=${{ matrix.shard }}/2
+
+      - name: Run Playwright tests (manual)
+        if: matrix.mode == 'manual'
+        env:
+          PLAYWRIGHT_BLOB_REPORT: '1'
         run: |
           set -euo pipefail
           TAG="${{ inputs.tag }}"
@@ -165,19 +126,19 @@ jobs:
               ;;
           esac
 
-      - name: Upload HTML report
+      - name: Upload blob report
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report-manual-${{ inputs.browser }}
-          path: playwright-report/
+          name: ${{ matrix.mode == 'manual' && format('blob-report-{0}-1', inputs.browser) || format('blob-report-{0}-{1}', matrix.project, matrix.shard) }}
+          path: blob-report/
           retention-days: 14
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: test-results-manual-${{ inputs.browser }}
+          name: ${{ matrix.mode == 'manual' && format('test-results-{0}-1', inputs.browser) || format('test-results-{0}-{1}', matrix.project, matrix.shard) }}
           path: test-results/
           retention-days: 14
 
@@ -185,7 +146,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: traces-manual-${{ inputs.browser }}
+          name: ${{ matrix.mode == 'manual' && format('traces-{0}-1', inputs.browser) || format('traces-{0}-{1}', matrix.project, matrix.shard) }}
           path: test-results/**/trace.zip
           retention-days: 14
 
@@ -220,7 +181,7 @@ jobs:
     if: >
       always() &&
       !cancelled() &&
-      needs.test.result != 'skipped' &&
+      (needs.test.result == 'success' || needs.test.result == 'failure') &&
       (github.event_name != 'pull_request' ||
         github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
