@@ -42,7 +42,12 @@ export default defineConfig({
   reporter: [
     ...(BLOB_REPORT
       ? [['blob'] as const]
-      : [['html', { open: CI ? 'never' : 'on-failure', outputFolder: 'playwright-report' }] as const]),
+      : [
+          [
+            'html',
+            { open: CI ? 'never' : 'on-failure', outputFolder: 'playwright-report' },
+          ] as const,
+        ]),
     ['list'],
     ['json', { outputFile: 'test-results/results.json' }],
     ['junit', { outputFile: 'test-results/results.xml' }],
