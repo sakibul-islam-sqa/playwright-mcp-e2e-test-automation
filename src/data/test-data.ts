@@ -5,8 +5,8 @@
  */
 
 export const SearchProductData = {
-  validProductNames: ['Top', 'Dress', 'Jeans', 'T-shirt'],
-  defaultSearchTerm: 'Top',
+  validProductNames: ['Winter', 'Sleeves', 'Jeans', 'T-shirt'],
+  defaultSearchTerm: 'Saree',
 } as const;
 
 export const ProductData = {
@@ -22,8 +22,8 @@ export const CategoryData = {
       tops: 'Tops',
       saree: 'Saree',
     },
-    expectedHeadingForTops: 'WOMEN - TOPS PRODUCTS',
-    expectedHeadingForDress: 'WOMEN - DRESS PRODUCTS',
+    expectedHeadingForTops: 'Women - Tops Products',
+    expectedHeadingForDress: 'Women - Dress Products',
   },
   men: {
     name: 'Men',
@@ -31,8 +31,8 @@ export const CategoryData = {
       tshirts: 'Tshirts',
       jeans: 'Jeans',
     },
-    expectedHeadingForTshirts: 'MEN - TSHIRTS PRODUCTS',
-    expectedHeadingForJeans: 'MEN - JEANS PRODUCTS',
+    expectedHeadingForTshirts: 'Men - Tshirts Products',
+    expectedHeadingForJeans: 'Men - Jeans Products',
   },
   kids: {
     name: 'Kids',
