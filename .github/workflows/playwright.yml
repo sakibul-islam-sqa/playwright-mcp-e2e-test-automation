@@ -27,9 +27,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CI: true
+  BASE_URL: http://automationexercise.com
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   test:
-    name: Run E2E Tests (${{ matrix.project }})
+    name: Run E2E Tests (${{ matrix.project }} - shard ${{ matrix.shard }}/2)
     if: github.event_name != 'workflow_dispatch'
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -72,19 +81,18 @@ jobs:
 
       - name: Run Playwright tests
         env:
-          CI: true
-          BASE_URL: http://automationexercise.com
+          PLAYWRIGHT_BLOB_REPORT: '1'
         run: |
           npx playwright test \
             --project=${{ matrix.project }} \
             --shard=${{ matrix.shard }}/2
 
-      - name: Upload HTML report
+      - name: Upload blob report
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report-${{ matrix.project }}-${{ matrix.shard }}
-          path: playwright-report/
+          name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
+          path: blob-report/
           retention-days: 14
 
       - name: Upload test results
@@ -132,9 +140,6 @@ jobs:
           fi
 
       - name: Run Playwright tests
-        env:
-          CI: true
-          BASE_URL: http://automationexercise.com
         run: |
           set -euo pipefail
           TAG="${{ inputs.tag }}"
@@ -209,21 +214,74 @@ jobs:
       - name: Run TypeScript type check
         run: npm run type-check
 
-  publish-report:
-    name: Publish Aggregated Report
+  deploy-report:
+    name: Deploy Playwright Report to GitHub Pages
     needs: test
-    if: ${{ !cancelled() && github.event_name != 'workflow_dispatch' }}
+    if: >
+      always() &&
+      !cancelled() &&
+      needs.test.result != 'skipped' &&
+      github.event_name != 'workflow_dispatch' &&
+      (github.event_name != 'pull_request' ||
+        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - name: Download all reports
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download blob reports
         uses: actions/download-artifact@v4
         with:
-          path: all-reports
-          pattern: playwright-report-*
+          path: all-blob-reports
+          pattern: blob-report-*
 
-      - name: Upload combined HTML reports
+      - name: Merge Playwright reports
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+
+      - name: Upload combined HTML report artifact
         uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: all-playwright-reports
-          path: all-reports/
+          path: playwright-report/
           retention-days: 30
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: playwright-report/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Add report link to workflow summary
+        if: steps.deployment.outputs.page_url != ''
+        run: |
+          {
+            echo "### Playwright HTML report"
+            echo ""
+            echo "Open the report in your browser (no artifact download required):"
+            echo ""
+            echo "${{ steps.deployment.outputs.page_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"

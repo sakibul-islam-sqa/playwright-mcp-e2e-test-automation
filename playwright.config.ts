@@ -6,6 +6,8 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const BASE_URL = process.env.BASE_URL ?? 'http://automationexercise.com';
 const CI = !!process.env.CI;
+/** Set in CI when sharding; shards upload blob reports and merge-reports builds HTML for GitHub Pages. */
+const BLOB_REPORT = !!process.env.PLAYWRIGHT_BLOB_REPORT;
 
 /**
  * Playwright Configuration
@@ -38,7 +40,9 @@ export default defineConfig({
   workers: CI ? 2 : 1,
 
   reporter: [
-    ['html', { open: CI ? 'never' : 'on-failure', outputFolder: 'playwright-report' }],
+    ...(BLOB_REPORT
+      ? [['blob'] as const]
+      : [['html', { open: CI ? 'never' : 'on-failure', outputFolder: 'playwright-report' }] as const]),
     ['list'],
     ['json', { outputFile: 'test-results/results.json' }],
     ['junit', { outputFile: 'test-results/results.xml' }],
