@@ -264,8 +264,11 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
+      # Requires repo Settings → Pages → Source: "GitHub Actions" (one-time setup).
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload site to GitHub Pages
         uses: actions/upload-pages-artifact@v3
